@@ -1,0 +1,15 @@
+<component name="libraryTable">
+  <library name="libs4">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/logback-classic-1.0.9.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/logback-core-1.0.9.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/commons-lang3-3.1.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/slf4j-api-1.7.2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/dexlib-1.3.4-dev.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/guava-13.0.1.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.dalvik/libs/commons-cli-1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="libs3">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.cast.java.test/libs/org.osgi.core-4.2.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.cast.java.test/libs/junit-4.11.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.cast.java.test/libs/org.eclipse.core.runtime-3.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

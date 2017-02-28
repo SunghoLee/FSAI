@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="apps">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/apps/HelloScript_simple.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/apps/HelloCordova-dex2jar.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

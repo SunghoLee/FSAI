@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="junit-4.111">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/com.ibm.wala.cast.test/libs/junit-4.11.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,16 @@
+*.config
+*.txt
+*.js
+*.html
+*.DS_Store
+*.class
+*.out
+*.swp
+*.dot
+*.svg
+*/bin/
+*/bin/*
+*~
+.metadata/
+out/
+target/
