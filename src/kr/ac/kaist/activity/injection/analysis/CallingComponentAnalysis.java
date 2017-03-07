@@ -666,6 +666,24 @@ public class CallingComponentAnalysis {
             return Collections.singleton(new ComponentCallingContext(originNode, originInst));
         }
 
+        private Set<Integer> findReturnValues(CGNode n){
+            Set<Integer> res = new HashSet<Integer>();
+            IR ir = makeIR(n);
+            for(SSAInstruction inst : ir.getInstructions()){
+                if(inst == null)
+                    continue;
+
+                if(!(inst instanceof SSAReturnInstruction))
+                    continue;
+
+                if(inst.getNumberOfUses() != 1)
+                    continue;
+
+                res.add(inst.getUse(0));
+            }
+            return res;
+        }
+
         private Set<ComponentCallingContext> trackComponentName(CGNode originNode, SSAInstruction originInst, CGNode n, int cnVar){
             Set<ComponentCallingContext> res = new HashSet<ComponentCallingContext>();
 
@@ -692,19 +710,32 @@ public class CallingComponentAnalysis {
 
                 // when ComponentName object is created by method call
                 if(defInst instanceof SSAAbstractInvokeInstruction){
+                    SSAAbstractInvokeInstruction invokeInst = (SSAAbstractInvokeInstruction) defInst;
 
+                    // when the method call is createRelative
+                    if(invokeInst.getDeclaredTarget().getDeclaringClass().getName().equals(ComponentName.TYPE_NAME) && (invokeInst.getDeclaredTarget().getSelector().equals(ComponentName.CREATE_RELATIVE_SELECTOR1) || invokeInst.getDeclaredTarget().getSelector().equals(ComponentName.CREATE_RELATIVE_SELECTOR2))){
+                        int classVar = invokeInst.getUse(1);
+                        SymbolTable symTab = makeIR(n).getSymbolTable();
+                        if(symTab.isStringConstant(classVar)){
+                            res.add(new ComponentCallingContext(originNode, originInst, new ConstantKey(symTab.getStringValue(classVar), cg.getClassHierarchy().lookupClass(TypeReference.JavaLangString))));
+                        }else
+                            res.add(new ComponentCallingContext(originNode, originInst));
+                    }else { // otherwise,
+                        CallSiteReference csr = invokeInst.getCallSite();
+
+                        for (CGNode succ : cg.getPossibleTargets(n, csr)) {
+                            for (int var : findReturnValues(succ)) {
+                                res.addAll(trackComponentName(originNode, originInst, succ, var));
+                            }
+                        }
+                    }
                 }else if(defInst instanceof SSANewInstruction){ // when ComponentName object is locally created in this method
                     SSANewInstruction newInst = (SSANewInstruction) defInst;
                     SSAAbstractInvokeInstruction invokeInst = findInitInstruction(n, newInst);
                     MethodReference initMRef = invokeInst.getDeclaredTarget();
                     if(initMRef.getDeclaringClass().getName().equals(ComponentName.TYPE_NAME)){
                         ComponentName.InitSelector s = ComponentName.InitSelector.match(initMRef.getSelector());
-                        /*
-        INIT2(Selector.make("<init>(Landroid/content/Context;Ljava/lang/String;)V")),
-        INIT3(Selector.make("<init>(Landroid/os/Parcel;)V")),
-        INIT4(Selector.make("<init>(Ljava/lang/String;Landroid/os/Parcel;)V")),
-        INIT5(Selector.make("<init>(Ljava/lang/String;Ljava/lang/String;)V")),
-                         */
+
                         switch(s){
                             case INIT1:
                                 int classVar = invokeInst.getUse(2);
