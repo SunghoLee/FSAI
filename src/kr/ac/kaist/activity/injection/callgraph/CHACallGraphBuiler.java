@@ -1,7 +1,5 @@
 package kr.ac.kaist.activity.injection.callgraph;
 
-import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.JarFileModule;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.dalvik.classLoader.DexFileModule;
@@ -18,7 +16,7 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 import com.ibm.wala.util.io.FileProvider;
-import kr.ac.kaist.hybridroid.utils.LocalFileReader;
+import kr.ac.kaist.wala.hybridroid.utils.LocalFileReader;
 
 import java.io.*;
 import java.util.*;
@@ -47,15 +45,15 @@ public class CHACallGraphBuiler {
 
         AnalysisScope scope = makeAnalysisScope(apk);
         this.cha = buildClassHierarchy(scope);
-        for(IClass c : cha){
-            if(c.getName().getClassName().toString().endsWith("ComponentName")){
-                for(IMethod m : c.getDeclaredMethods()){
-                        System.out.println("#M: " + m);
-                }
-            }
-        }
-
-        System.exit(-1);
+//        for(IClass c : cha){
+//            if(c.getName().getClassName().toString().endsWith("ComponentName")){
+//                for(IMethod m : c.getDeclaredMethods()){
+//                        System.out.println("#M: " + m);
+//                }
+//            }
+//        }
+//
+//        System.exit(-1);
     }
 
     public CallGraph buildCallGraph(){

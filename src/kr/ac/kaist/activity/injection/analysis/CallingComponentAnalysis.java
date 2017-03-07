@@ -15,6 +15,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.debug.UnimplementedError;
+import kr.ac.kaist.activity.injection.types.ComponentName;
 import kr.ac.kaist.activity.injection.types.Intent;
 
 import java.util.*;
@@ -185,8 +186,8 @@ public class CallingComponentAnalysis {
         @Override
         public String toString(){
             String res = (originNode == null)? "" : originNode.toString() + "\n";
-            res += (originInst == null)? "" : "\t Instruction: " + originInst + "\n";
-            res += ((res.length() > 1)? "\t" : "") + "Intent[ action: " + action + ", category: " + category + ", flags: " + flags + ", target: ";
+            res += (originInst == null)? "" : "\tInstruction: " + originInst + "\n";
+            res += ((res.length() > 1)? "\t\t" : "") + "Intent[ action: " + action + ", category: " + category + ", flags: " + flags + ", target: ";
 
             if(targets.isEmpty()){
                 res += "Unknown ]";
@@ -497,7 +498,7 @@ public class CallingComponentAnalysis {
         public void visitNew(SSANewInstruction instruction) {
             if(DEBUG)
                 System.out.println("INST: " + instruction);
-            cccSet.add(findComponentCallingContext(originNode, originInst, instruction));
+            cccSet.addAll(findComponentCallingContext(originNode, originInst, instruction));
         }
 
         @Override
@@ -574,7 +575,7 @@ public class CallingComponentAnalysis {
             return cccSet;
         }
 
-        private ComponentCallingContext findComponentCallingContext(CGNode originNode, SSAInstruction originInst, SSANewInstruction newInst){
+        private Set<ComponentCallingContext> findComponentCallingContext(CGNode originNode, SSAInstruction originInst, SSANewInstruction newInst){
             SSAAbstractInvokeInstruction invokeInst = findInitInstOfNew(newInst);
             return getComponentCallingContextFromInvoke(originNode, originInst, invokeInst);
         }
@@ -606,28 +607,41 @@ public class CallingComponentAnalysis {
             return null;
         }
 
-        private ComponentCallingContext getComponentCallingContextFromInvoke(CGNode originNode, SSAInstruction originInst, SSAAbstractInvokeInstruction invokeInst){
+        private Set<ComponentCallingContext> getComponentCallingContextFromInvoke(CGNode originNode, SSAInstruction originInst, SSAAbstractInvokeInstruction invokeInst){
             MethodReference ref = invokeInst.getDeclaredTarget();
 
+            /*
+        INIT_INTENT1(Selector.make("<init>()V")), // empty initialization
+        INIT_INTENT2(Selector.make("<init>(Landroid/content/Context;Ljava/lang/Class;)V")), // explicit set target
+        INIT_INTENT3(Selector.make("<init>(Landroid/content/Intent;)V")), // copy intent
+        INIT_INTENT4(Selector.make("<init>(Landroid/content/Intent;Z)V")), // copy intent
+        INIT_INTENT5(Selector.make("<init>(Landroid/os/Parcel;)V")), // Unknown
+        INIT_INTENT6(Selector.make("<init>(Ljava/lang/String;)V")), // implicit intent
+        INIT_INTENT7(Selector.make("<init>(Ljava/lang/String;Landroid/net/Uri;)V")), // implicit intent
+        INIT_INTENT8(Selector.make("<init>(Ljava/lang/String;Landroid/net/Uri;Landroid/content/Context;Ljava/lang/Class;)V")), // explicit set target
+             */
             if(ref.getDeclaringClass().getName().equals(Intent.INTENT_TYPE)){
                 Intent.InitSelector s = Intent.InitSelector.matchInit(ref.getSelector());
                 if(s != null){
                     switch(s){
                         case INIT_INTENT1:
-                            break;
+                            return findTargetsFromIntent(originNode, originInst, n, invokeInst.getUse(0));
                         case INIT_INTENT2:
                             int classVar2 = invokeInst.getUse(2);
                             ComponentCallingContext ccc2 = new ComponentCallingContext(originNode, originInst);
                             ccc2.addTarget(findMetaData(n, classVar2));
-                            return ccc2;
+                            return Collections.singleton(ccc2);
                         case INIT_INTENT3:
-                            break;
                         case INIT_INTENT4:
-                            break;
+                            int intentVar = invokeInst.getUse(1);
+                            return getCallingContexts(originNode, originInst, n, intentVar);
                         case INIT_INTENT5:
-                            break;
+                            return findTargetsFromIntent(originNode, originInst, n, invokeInst.getDef());
                         case INIT_INTENT6:
+                            //TODO: handle implicit intent
                         case INIT_INTENT7:
+                            //TODO: handle implicit intent
+                            return Collections.singleton(new ComponentCallingContext(originNode, originInst));
                         case INIT_INTENT8:
                             int classVar8 = invokeInst.getUse(2);
                             int actionVar = invokeInst.getUse(1);
@@ -642,14 +656,286 @@ public class CallingComponentAnalysis {
                                 ccc8 = new ComponentCallingContext(originNode, originInst, symTab.getStringValue(actionVar));
 
                             ccc8.addTarget(findMetaData(n, classVar8));
-                            return ccc8;
+                            return Collections.singleton(ccc8);
                     }
                 }
             }else {
                 warnings.add("Now, do not consider about non-action based intent initialization: " + invokeInst);
 //                throw new UnimplementedError("Now, do not consider about non-action based intent initialization: " + invokeInst);
             }
-            return new ComponentCallingContext(originNode, originInst);
+            return Collections.singleton(new ComponentCallingContext(originNode, originInst));
+        }
+
+        private Set<ComponentCallingContext> trackComponentName(CGNode originNode, SSAInstruction originInst, CGNode n, int cnVar){
+            Set<ComponentCallingContext> res = new HashSet<ComponentCallingContext>();
+
+            // when ComponentName object is passed as an argument
+            if(cnVar < n.getMethod().getNumberOfParameters()){
+                Iterator<CGNode> iPred = cg.getPredNodes(n);
+                // for each predecessor node
+                while(iPred.hasNext()){
+                    CGNode pred = iPred.next();
+                    Iterator<CallSiteReference> iCsr = cg.getPossibleSites(n, pred);
+                    //for each call site
+                    while(iCsr.hasNext()){
+                        CallSiteReference csr = iCsr.next();
+
+                        for(SSAAbstractInvokeInstruction invokeInst : makeIR(pred).getCalls(csr)){
+                            int predCnVar = invokeInst.getUse(cnVar - 1);
+                            res.addAll(trackComponentName(originNode, originInst, pred, predCnVar));
+                        }
+                    }
+                }
+            }else{ // others
+                DefUse du = makeDefUse(n);
+                SSAInstruction defInst = du.getDef(cnVar);
+
+                // when ComponentName object is created by method call
+                if(defInst instanceof SSAAbstractInvokeInstruction){
+
+                }else if(defInst instanceof SSANewInstruction){ // when ComponentName object is locally created in this method
+                    SSANewInstruction newInst = (SSANewInstruction) defInst;
+                    SSAAbstractInvokeInstruction invokeInst = findInitInstruction(n, newInst);
+                    MethodReference initMRef = invokeInst.getDeclaredTarget();
+                    if(initMRef.getDeclaringClass().getName().equals(ComponentName.TYPE_NAME)){
+                        ComponentName.InitSelector s = ComponentName.InitSelector.match(initMRef.getSelector());
+                        /*
+        INIT2(Selector.make("<init>(Landroid/content/Context;Ljava/lang/String;)V")),
+        INIT3(Selector.make("<init>(Landroid/os/Parcel;)V")),
+        INIT4(Selector.make("<init>(Ljava/lang/String;Landroid/os/Parcel;)V")),
+        INIT5(Selector.make("<init>(Ljava/lang/String;Ljava/lang/String;)V")),
+                         */
+                        switch(s){
+                            case INIT1:
+                                int classVar = invokeInst.getUse(2);
+                                ConstantKey ck = findMetaData(n, classVar);
+                                res.add(new ComponentCallingContext(originNode, originInst, ck));
+                                break;
+                            case INIT2:
+                                int targetVar2 = invokeInst.getUse(2);
+                                SymbolTable symTab2 = makeIR(n).getSymbolTable();
+                                if(symTab2.isStringConstant(targetVar2)){
+                                    res.add(new ComponentCallingContext(originNode, originInst, new ConstantKey(symTab2.getStringValue(targetVar2), cg.getClassHierarchy().lookupClass(TypeReference.JavaLangString))));
+                                }else
+                                    res.add(new ComponentCallingContext(originNode, originInst));
+                                break;
+                            case INIT3:
+                                //TODO: handle about createRelative method
+                            case INIT4:
+                                //TODO: handle about createRelative method
+                                res.add(new ComponentCallingContext(originNode, originInst));
+                                break;
+                            case INIT5:
+                                int targetVar5 = invokeInst.getUse(2);
+                                SymbolTable symTab5 = makeIR(n).getSymbolTable();
+                                if(symTab5.isStringConstant(targetVar5)){
+                                    res.add(new ComponentCallingContext(originNode, originInst, new ConstantKey(symTab5.getStringValue(targetVar5), cg.getClassHierarchy().lookupClass(TypeReference.JavaLangString))));
+                                }else
+                                    res.add(new ComponentCallingContext(originNode, originInst));
+                                break;
+                        }
+                    }else{
+                        Assertions.UNREACHABLE("The target of this instruction must be an init method of ComponentName: " + invokeInst + ", CurTarget: " + initMRef);
+                    }
+                }
+            }
+            return res;
+        }
+
+        private SSAAbstractInvokeInstruction findInitInstruction(CGNode n, SSANewInstruction newInst){
+            SSAInstruction[] insts = makeIR(n).getInstructions();
+            int defVar = newInst.getDef();
+
+            for(int i = newInst.iindex; i<insts.length; i++){
+                SSAInstruction inst = insts[i];
+                if(inst == null)
+                    continue;
+
+                if(!(inst instanceof SSAAbstractInvokeInstruction))
+                    continue;
+
+                if(!(inst.getNumberOfUses() > 0))
+                    continue;
+
+                if(inst.getUse(0) == defVar)
+                    return (SSAAbstractInvokeInstruction)inst;
+            }
+
+            Assertions.UNREACHABLE("Cannot find the init instruction: " + newInst + " in " + n);
+            return null;
+        }
+
+        private Set<ComponentCallingContext> findTargetsFromIntent(CGNode originNode, SSAInstruction originInst, CGNode n, int intentVar){
+            Set<ComponentCallingContext> res = findTargets(originNode, originInst, n, intentVar);
+
+            if(res.isEmpty())
+                res.add(new ComponentCallingContext(originNode, originInst));
+            return res;
+        }
+
+        private Set<ComponentCallingContext> findTargets(CGNode originNode, SSAInstruction originInst, CGNode n, int intentVar){
+            Set<ComponentCallingContext> res = new HashSet<ComponentCallingContext>();
+
+            DefUse du = makeDefUse(n);
+            Iterator<SSAInstruction> iUseInst = du.getUses(intentVar);
+            while(iUseInst.hasNext()){
+                SSAInstruction useInst = iUseInst.next();
+
+                useInst.visit(new SSAInstruction.IVisitor() {
+                    @Override
+                    public void visitGoto(SSAGotoInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Goto instruction");
+                    }
+
+                    @Override
+                    public void visitArrayLoad(SSAArrayLoadInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Arrayload instruction");
+                    }
+
+                    @Override
+                    public void visitArrayStore(SSAArrayStoreInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Arraystore instruction");
+                    }
+
+                    @Override
+                    public void visitBinaryOp(SSABinaryOpInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Binary operation instruction");
+                    }
+
+                    @Override
+                    public void visitUnaryOp(SSAUnaryOpInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Unary operation instruction");
+                    }
+
+                    @Override
+                    public void visitConversion(SSAConversionInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Conversion instruction");
+                    }
+
+                    @Override
+                    public void visitComparison(SSAComparisonInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Comparison instruction");
+                    }
+
+                    @Override
+                    public void visitConditionalBranch(SSAConditionalBranchInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Conditional branch instruction");
+                    }
+
+                    @Override
+                    public void visitSwitch(SSASwitchInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Switch instruction");
+                    }
+
+                    @Override
+                    public void visitReturn(SSAReturnInstruction instruction) {
+                        //TODO: should we track the data flow in return site?
+                    }
+
+                    @Override
+                    public void visitGet(SSAGetInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Get instruction");
+                    }
+
+                    @Override
+                    public void visitPut(SSAPutInstruction instruction) {
+                        //TODO: just ignore this case; it is not related with target
+//                        Assertions.UNREACHABLE("Intent cannot be used in Put instruction");
+                    }
+
+                    @Override
+                    public void visitInvoke(SSAInvokeInstruction instruction) {
+                        int argNum = 0;
+
+                        //find a variable number for the intent value in the callee node
+                        for(; argNum < instruction.getNumberOfUses(); argNum++){
+                            int useVar = instruction.getUse(argNum);
+                            if(useVar == intentVar) {
+                                argNum += 1;
+                                break;
+                            }
+                        }
+
+                        MethodReference targetMRef = instruction.getDeclaredTarget();
+
+                        // when setComponentName is called
+                        if(argNum == 1 && targetMRef.getDeclaringClass().getName().equals(Intent.INTENT_TYPE) && targetMRef.getSelector().equals(Intent.SET_COMPONENT_SELECTOR)){
+                            res.addAll(trackComponentName(originNode, originInst, n, instruction.getUse(1)));
+                        }else if(argNum == 1 && targetMRef.getDeclaringClass().getName().equals(Intent.INTENT_TYPE) && targetMRef.getSelector().equals(Intent.SET_CLASS_SELECTOR)){
+                            int classVar = instruction.getUse(2);
+                            ConstantKey ck = findMetaData(n, classVar);
+
+                            res.add(new ComponentCallingContext(originNode, originInst, ck));
+                        }else if(argNum == 1 && targetMRef.getDeclaringClass().getName().equals(Intent.INTENT_TYPE) && (targetMRef.getSelector().equals(Intent.SET_CLASS_NAME_SELECTOR1) || targetMRef.getSelector().equals(Intent.SET_CLASS_NAME_SELECTOR2))){
+                            int classVar = instruction.getUse(2);
+                            SymbolTable symTab = makeIR(n).getSymbolTable();
+
+                            if(symTab.isStringConstant(classVar)){
+                                res.add(new ComponentCallingContext(originNode, originInst, new ConstantKey(symTab.getStringValue(classVar), cg.getClassHierarchy().lookupClass(TypeReference.JavaLangString))));
+                            }else
+                                res.add(new ComponentCallingContext(originNode, originInst));
+                        }else {
+                            //recursively, find the target in successor nodes
+                            for (CGNode succ : cg.getPossibleTargets(n, instruction.getCallSite())) {
+                                res.addAll(findTargets(originNode, originInst, succ, argNum));
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void visitNew(SSANewInstruction instruction) {
+                        //TODO: Ignore this case; we already treat this case at getComponentCallingContextFromInvoke method
+//                        Assertions.UNREACHABLE("Intent cannot be used in New instruction");
+                    }
+
+                    @Override
+                    public void visitArrayLength(SSAArrayLengthInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Array Length instruction");
+                    }
+
+                    @Override
+                    public void visitThrow(SSAThrowInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Throw instruction");
+                    }
+
+                    @Override
+                    public void visitMonitor(SSAMonitorInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Mornitor instruction");
+                    }
+
+                    @Override
+                    public void visitCheckCast(SSACheckCastInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Checkcast instruction");
+                    }
+
+                    @Override
+                    public void visitInstanceof(SSAInstanceofInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Instanceof instruction");
+                    }
+
+                    @Override
+                    public void visitPhi(SSAPhiInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Phi instruction");
+                    }
+
+                    @Override
+                    public void visitPi(SSAPiInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in Pi instruction");
+                    }
+
+                    @Override
+                    public void visitGetCaughtException(SSAGetCaughtExceptionInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in GetCaughtException instruction");
+                    }
+
+                    @Override
+                    public void visitLoadMetadata(SSALoadMetadataInstruction instruction) {
+                        Assertions.UNREACHABLE("Intent cannot be used in LoadMetadata instruction");
+                    }
+                });
+            }
+
+            return res;
         }
     }
 }
