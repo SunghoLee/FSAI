@@ -1,13 +1,18 @@
 package kr.ac.kaist.activity.injection;
 
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
-import kr.ac.kaist.activity.injection.analysis.CallingComponentAnalysis;
+import com.ibm.wala.types.MethodReference;
+import kr.ac.kaist.activity.injection.analysis.IntentAnalysis;
 import kr.ac.kaist.activity.injection.appinfo.ActivityInfoExtractor;
 import kr.ac.kaist.activity.injection.callgraph.CHACallGraphBuiler;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 /**
@@ -46,10 +51,12 @@ public class Shell {
             CHACallGraphBuiler builder = new CHACallGraphBuiler(property, apk);
 
             CallGraph cg = builder.buildCallGraph();
-            CallingComponentAnalysis cca = new CallingComponentAnalysis(cg);
-            for(CallingComponentAnalysis.ComponentCallingContext cc : cca.getCallingContexts()){
-                System.out.println(cc);
-            }
+            IntentAnalysis ia = new IntentAnalysis(cg);
+            ia.analyze();
+//            CallingComponentAnalysis cca = new CallingComponentAnalysis(cg);
+//            for(CallingComponentAnalysis.ComponentCallingContext cc : cca.getCallingContexts()){
+//                System.out.println(cc);
+//            }
 
 //        } catch (ParserConfigurationException e) {
 //            e.printStackTrace();
@@ -60,6 +67,26 @@ public class Shell {
         } catch (ClassHierarchyException e) {
             e.printStackTrace();
         }
+    }
+
+    private static Set<CGNode> findStartActivityNode(CallGraph cg, MethodReference mr){
+        Set<CGNode> targetNodes = new HashSet<>();
+
+        //get startActivity nodes of ContextWrapper
+        Iterator<CGNode> iNodes = cg.getNodes(mr).iterator();
+        while(iNodes.hasNext())
+            targetNodes.add(iNodes.next());
+
+        //recursively get startActivity nodes of subclasses of ContextWrapper
+        for(IClass sub : cg.getClassHierarchy().computeSubClasses(mr.getDeclaringClass())){
+
+            MethodReference subMr = MethodReference.findOrCreate(sub.getReference(), mr.getSelector());
+            Iterator<CGNode> iSubNodes = cg.getNodes(subMr).iterator();
+            while(iSubNodes.hasNext())
+                targetNodes.add(iSubNodes.next());
+        }
+
+        return targetNodes;
     }
 
     private static boolean isAnalyzable(Set<ActivityInfoExtractor.ActivityInfo> infos, String packageName){
