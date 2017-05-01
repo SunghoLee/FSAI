@@ -4,6 +4,9 @@ import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import sun.jvm.hotspot.types.WrongTypeException;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Created by leesh on 08/02/2017.
  */
@@ -82,6 +85,23 @@ public class Intent {
         private final Selector s;
 
         AddFlagsSelector(int flagIndex, Selector s){ this.flagIndex = flagIndex; this.s = s; }
+
+        public Selector getSelector(){
+            return s;
+        }
+
+        public int getFlagIndex(){
+            return this.flagIndex;
+        }
+    }
+
+    public enum SetFlagsSelector{
+        SET_FLAGS(1, Selector.make("setFlags(I)Landroid/content/Intent;")),
+        ;
+        private final int flagIndex;
+        private final Selector s;
+
+        SetFlagsSelector(int flagIndex, Selector s){ this.flagIndex = flagIndex; this.s = s; }
 
         public Selector getSelector(){
             return s;
@@ -406,6 +426,16 @@ public class Intent {
             }
 
             return null;
+        }
+
+        public static Set<Flag> calculateFlags(int n){
+            Set<Flag> res = new HashSet<>();
+            for(Flag f : Flag.values()){
+                if((n & f.getValue()) == f.getValue()){
+                    res.add(f);
+                }
+            }
+            return res;
         }
     }
 }

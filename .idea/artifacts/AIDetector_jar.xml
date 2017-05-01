@@ -1,0 +1,32 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="AIDetector:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/AIDetector_jar</output-path>
+    <root id="archive" name="AIDetector.jar">
+      <element id="module-output" name="ActivityInjectionDetector" />
+      <element id="module-output" name="com.ibm.wala.core" />
+      <element id="module-output" name="com.ibm.wala.util" />
+      <element id="module-output" name="com.ibm.wala.shrike" />
+      <element id="module-output" name="com.ibm.wala.core.tests" />
+      <element id="module-output" name="com.ibm.wala.dalvik" />
+      <element id="module-output" name="com.ibm.wala.cast" />
+      <element id="module-output" name="models" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/libs/apktool_2.0.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.core.tests/libs/junit-4.11.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.core.tests/libs/java-hamcrest-2.0.0.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.core.tests/libs/jericho-html-3.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.core.tests/libs/apache-ant-1.8.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.core.tests/libs/org.osgi.core-4.2.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.core.tests/libs/org.eclipse.core.runtime-3.1.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.cast/libs/commons-io-2.4.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.cast/libs/org.eclipse.core.runtime-3.1.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.cast/libs/org.osgi.core-4.2.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/logback-classic-1.0.9.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/logback-core-1.0.9.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/commons-lang3-3.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/slf4j-api-1.7.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/dexlib-1.3.4-dev.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/guava-13.0.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../HybriDroid/com.ibm.wala.dalvik/libs/commons-cli-1.2.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

@@ -1,5 +1,7 @@
 package kr.ac.kaist.activity.injection.callgraph;
 
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.JarFileModule;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.dalvik.classLoader.DexFileModule;
@@ -9,19 +11,25 @@ import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.cha.CHACallGraph;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.nCFABuilder;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.ClassLoaderReference;
+import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 import com.ibm.wala.util.io.FileProvider;
-import kr.ac.kaist.wala.hybridroid.utils.LocalFileReader;
 
 import java.io.*;
+import java.net.URI;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.jar.JarFile;
+
+import static com.ibm.wala.properties.WalaProperties.ANDROID_RT_JAVA_JAR;
+import static kr.ac.kaist.activity.injection.analysis.LibraryModel.isLibrary;
 
 /**
  * Created by leesh on 20/02/2017.
@@ -58,6 +66,8 @@ public class CHACallGraphBuiler {
 
     public CallGraph buildCallGraph(){
         CHACallGraph cg = new CHACallGraph(cha);
+        nCFABuilder b;
+//        cg.registerEntrypoint();
         try {
             cg.init(findEntryPoints(cha));
         } catch (CancelException e) {
@@ -77,6 +87,7 @@ public class CHACallGraphBuiler {
 
         List<Entrypoint> entries = new ArrayList<>();
         entries.addAll(androidEntries);
+        entries.addAll(findConstructorsOfActivities(cha));
 
         return new Iterable<Entrypoint>(){
             @Override
@@ -96,6 +107,25 @@ public class CHACallGraphBuiler {
         };
     }
 
+    protected List<AndroidEntryPoint> findConstructorsOfActivities(IClassHierarchy cha){
+        List<AndroidEntryPoint> res = new ArrayList<>();
+        TypeName tn = TypeName.findOrCreate("Landroid/app/Activity");
+        TypeReference actTR = TypeReference.findOrCreate(ClassLoaderReference.Primordial, tn);
+
+        for(IClass act : cha.computeSubClasses(actTR)){
+            if(isLibrary(act))
+                continue;
+
+            for(IMethod m : act.getDeclaredMethods()){
+                if(m.isInit()){
+                    res.add(new AndroidEntryPoint(AndroidEntryPoint.ExecutionOrder.AT_FIRST, m, cha));
+                }
+            }
+        }
+
+        return res;
+    }
+
     protected AnalysisScope makeAnalysisScope(String apk) {
         AnalysisScope scope = AnalysisScope.createJavaAnalysisScope();
         //Set DexClassLoader as class loader.
@@ -112,7 +142,7 @@ public class CHACallGraphBuiler {
             fs.close();
 
             //Add Android libraries to analysis scope.
-            String lib = LocalFileReader.androidJar(properties).getPath();
+            String lib = androidJar(properties).getPath();
             if (lib.endsWith(".dex"))
                 scope.addToScope(ClassLoaderReference.Primordial, DexFileModule.make(new File(lib)));
             else if (lib.endsWith(".jar"))
@@ -131,6 +161,13 @@ public class CHACallGraphBuiler {
         }
 
         return scope;
+    }
+
+    public static URI androidJar(Properties walaProperties) {
+        File libFile = new File(walaProperties.getProperty(ANDROID_RT_JAVA_JAR));
+        System.err.println("#lib: "+libFile.getAbsolutePath()+"("+libFile.exists()+")");
+
+        return libFile.toURI();
     }
 
     protected IClassHierarchy buildClassHierarchy(AnalysisScope scope) throws ClassHierarchyException {

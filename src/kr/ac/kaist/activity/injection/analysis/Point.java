@@ -10,11 +10,15 @@ public class Point {
     private final CGNode n;
     private final int iindex;
     private final int v;
+    private final SSAInstruction inst;
+    private final ForwardDataflowAnalysisUsingDefUse.Work w;
 
-    public Point(CGNode n, int iindex, int v){
+    public Point(CGNode n, int iindex, int v, SSAInstruction inst, ForwardDataflowAnalysisUsingDefUse.Work w){
         this.n = n;
         this.iindex = iindex;
         this.v = v;
+        this.inst = inst;
+        this.w = w;
     }
 
     public CGNode getNode(){
@@ -29,8 +33,8 @@ public class Point {
         return this.v;
     }
 
-    public SSAInstruction getinstruction(CHACache cache){
-        return cache.makeIR(this.n).getInstructions()[this.iindex];
+    public SSAInstruction getinstruction(){
+        return this.inst;
     }
 
     @Override
@@ -42,7 +46,7 @@ public class Point {
     public boolean equals(Object o){
         if(o instanceof Point){
             Point p = (Point) o;
-            if(p.n.equals(this.n) && p.iindex == this.iindex && p.v == this.v) {
+            if(p.n.equals(this.n) && p.iindex == this.iindex && p.v == this.v){
                 return true;
             }
         }
@@ -51,6 +55,10 @@ public class Point {
 
     @Override
     public String toString(){
-        return n.toString() + " # (" + iindex + ") " + ((iindex > -1)? getinstruction(new CHACache(1)) : "PHI")+ " # " + v;
+        return n.toString() + " # (" + iindex + ") " + getinstruction() + " # " + v + " [WITH] " + w;
+    }
+
+    public ForwardDataflowAnalysisUsingDefUse.Work getWork(){
+        return w;
     }
 }

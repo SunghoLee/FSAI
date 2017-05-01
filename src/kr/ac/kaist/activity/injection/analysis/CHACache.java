@@ -24,19 +24,24 @@ public class CHACache {
         this.cacheLimit = limit;
     }
 
-    public IR makeIR(CGNode n){
+    public IR makeIR(CGNode n) throws NullPointerException{
         if(irCache.keySet().contains(n))
             return irCache.get(n);
 
         if(irCache.size() == cacheLimit)
             irCache.clear();
 
-        IR ir = irFactory.makeIR(n.getMethod(), Everywhere.EVERYWHERE, SSAOptions.defaultOptions());
+        IR ir = null;
+//        try {
+            ir = irFactory.makeIR(n.getMethod(), Everywhere.EVERYWHERE, SSAOptions.defaultOptions());
+//        }catch(Exception e){
+//            System.out.println("CANNOT MAKE IR: " + n);
+//        }
         irCache.put(n, ir);
         return ir;
     }
 
-    public DefUse makeDefUse(CGNode n){
+    public DefUse makeDefUse(CGNode n) throws NullPointerException{
         if(duCache.keySet().contains(n))
             return duCache.get(n);
 
