@@ -244,7 +244,7 @@ public class BackwardDataflowUsingDefUse {
         Set<Point> res = new HashSet<>();
 
         if(arrLoadInstruction.getDef() == p.getTrackingVar()){
-            res.add(new Point(n, arrLoadInstruction.iindex, arrLoadInstruction.getArrayRef(), arrLoadInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().clone(), arrLoadInstruction.getArrayRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
+            res.add(new Point(n, arrLoadInstruction.iindex, arrLoadInstruction.getArrayRef(), arrLoadInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().getInfo(), p.getWork().clone(), arrLoadInstruction.getArrayRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
                 @Override
                 public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                     if(inst instanceof SSAArrayLoadInstruction && ((SSAArrayLoadInstruction)inst).getArrayRef() == targetV){
@@ -259,7 +259,7 @@ public class BackwardDataflowUsingDefUse {
                 }
             })));
 
-            finalResult.add(new Point(n, arrLoadInstruction.iindex, arrLoadInstruction.getArrayRef(), arrLoadInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().clone(), arrLoadInstruction.getArrayRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
+            finalResult.add(new Point(n, arrLoadInstruction.iindex, arrLoadInstruction.getArrayRef(), arrLoadInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().getInfo(), p.getWork().clone(), arrLoadInstruction.getArrayRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
                 @Override
                 public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                     if(inst instanceof SSAArrayLoadInstruction && ((SSAArrayLoadInstruction)inst).getArrayRef() == targetV){
@@ -342,7 +342,7 @@ public class BackwardDataflowUsingDefUse {
         }else if(getInstruction.getDef() == p.getTrackingVar()){
             FieldReference field = getInstruction.getDeclaredField();
 
-            res.add(new Point(n, getInstruction.iindex, getInstruction.getRef(), getInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().clone(), getInstruction.getRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
+            res.add(new Point(n, getInstruction.iindex, getInstruction.getRef(), getInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().getInfo(), p.getWork().clone(), getInstruction.getRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
                 @Override
                 public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                     if(inst instanceof SSAGetInstruction && ((SSAGetInstruction)inst).getRef() == getInstruction.getRef() && ((SSAGetInstruction)inst).getDeclaredField().equals(field)){
@@ -357,7 +357,7 @@ public class BackwardDataflowUsingDefUse {
                 }
             })));
 
-            finalResult.add(new Point(n, getInstruction.iindex, getInstruction.getRef(), getInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().clone(), getInstruction.getRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
+            finalResult.add(new Point(n, getInstruction.iindex, getInstruction.getRef(), getInstruction, new ForwardDataflowAnalysisUsingDefUse.Work(p.getWork().getInfo(), p.getWork().clone(), getInstruction.getRef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
                 @Override
                 public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                     if(inst instanceof SSAGetInstruction && ((SSAGetInstruction)inst).getRef() == getInstruction.getRef() && ((SSAGetInstruction)inst).getDeclaredField().equals(field)){

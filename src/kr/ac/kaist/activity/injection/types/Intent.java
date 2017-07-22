@@ -424,7 +424,6 @@ public class Intent {
                 if(v == f.getValue())
                     return f;
             }
-
             return null;
         }
 

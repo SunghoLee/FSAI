@@ -53,6 +53,13 @@ public class ForwardDataflowAnalysisUsingDefUse {
 
 //            System.out.println("#FORWARD!");
 //            System.out.println("\t#P: " + point);
+//            try {
+//                System.in.read(
+//
+//                );
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
             Set<Point> succes = getSuccPoints(point);
 
             if(termFlag){
@@ -99,7 +106,6 @@ public class ForwardDataflowAnalysisUsingDefUse {
         final Set<Point> res = new HashSet<>();
         try {
             DefUse du = cache.makeDefUse(p.getNode());
-            Iterator<SSAInstruction> iUse = du.getUses(p.getTrackingVar());
 
             Work w = p.getWork();
             CGNode n = p.getNode();
@@ -107,11 +113,13 @@ public class ForwardDataflowAnalysisUsingDefUse {
                 return res;
 
             if (p.getinstruction().getDef() == p.getTrackingVar()) {
+                Iterator<SSAInstruction> iUse = du.getUses(p.getTrackingVar());
                 while (iUse.hasNext()) {
                     SSAInstruction useInst = iUse.next();
                     Point newPoint = new Point(p.getNode(), useInst.iindex, p.getTrackingVar(), useInst, w.clone());
                     res.add(newPoint);
                 }
+
             } else {
                 p.getinstruction().visit(new SSAInstruction.IVisitor() {
                     @Override
@@ -125,6 +133,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
                             Work newWork = w.visit(n, instruction);
 
                             if (!newWork.equals(w)) {
+                                w.info.setArray();
                                 res.add(new Point(n, instruction.iindex, instruction.getDef(), instruction, newWork.clone().setTargetV(instruction.getDef())));
                             }
                         }else{
@@ -136,8 +145,8 @@ public class ForwardDataflowAnalysisUsingDefUse {
                     public void visitArrayStore(SSAArrayStoreInstruction instruction) {
                         if(instruction.getValue() == p.getTrackingVar()) {
                             Iterator<SSAInstruction> iUses = cache.makeDefUse(n).getUses(instruction.getArrayRef());
-
-                            res.addAll(findUsageOfAlias(new Point(n, instruction.iindex, instruction.getArrayRef(), instruction, new Work(w.clone(), instruction.getArrayRef(), new WorkVisitor() {
+                            w.info.setArray();
+                            res.addAll(findUsageOfAlias(new Point(n, instruction.iindex, instruction.getArrayRef(), instruction, new Work(w.info, w.clone(), instruction.getArrayRef(), new WorkVisitor() {
                                 @Override
                                 public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                                     if (inst instanceof SSAArrayLoadInstruction && ((SSAArrayLoadInstruction) inst).getArrayRef() == targetV) {
@@ -155,7 +164,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
                             while (iUses.hasNext()) {
                                 SSAInstruction useInst = iUses.next();
                                 if (useInst.iindex > instruction.iindex) {
-                                    res.add(new Point(n, useInst.iindex, instruction.getArrayRef(), useInst, new Work(w.clone(), instruction.getArrayRef(), new WorkVisitor() {
+                                    res.add(new Point(n, useInst.iindex, instruction.getArrayRef(), useInst, new Work(w.info, w.clone(), instruction.getArrayRef(), new WorkVisitor() {
                                         @Override
                                         public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                                             if (inst instanceof SSAArrayLoadInstruction && ((SSAArrayLoadInstruction) inst).getArrayRef() == targetV) {
@@ -212,6 +221,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
                     @Override
                     public void visitReturn(SSAReturnInstruction instruction) {
                         Iterator<CGNode> iPred = cg.getPredNodes(p.getNode());
+
                         while (iPred.hasNext()) {
                             CGNode pred = iPred.next();
                             if(isLibrary(pred))
@@ -223,6 +233,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
                                 try {
                                     for (SSAAbstractInvokeInstruction invokeInst : cache.makeIR(pred).getCalls(csr)) {
                                         if (invokeInst.hasDef()) {
+                                            w.info.setInter();
                                             res.add(new Point(pred, invokeInst.iindex, invokeInst.getDef(), invokeInst, w.clone().setTargetV(invokeInst.getDef())));
                                         }
                                     }
@@ -242,6 +253,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
                         else if(instruction.getRef() == p.getTrackingVar()) {
                             Work newWork = w.visit(n, instruction);
                             if (!newWork.equals(w)) {
+                                w.info.setField();
                                 res.add(new Point(n, instruction.iindex, instruction.getDef(), instruction, newWork.clone().setTargetV(instruction.getDef())));
                             }
 
@@ -257,7 +269,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
 
                         if(instruction.isStatic()){
 
-                            System.err.println("We do not treat static field: " + p + " in " + instruction);
+                            System.out.println("We do not treat static field: " + p + " in " + instruction);
 //                            for(Pair<CGNode,SSAGetInstruction> pair : findAllGetInstsForStaticField(field)) {
 //                                res.add(new Point(pair.fst, pair.snd.iindex, pair.snd.getDef(), pair.snd, p.getWork().clone()));
 //                            }
@@ -267,8 +279,8 @@ public class ForwardDataflowAnalysisUsingDefUse {
 //                            }
                         }else if(instruction.getVal() == p.getTrackingVar()){
                             Iterator<SSAInstruction> iUses = cache.makeDefUse(n).getUses(instruction.getRef());
-
-                            res.addAll(findUsageOfAlias(new Point(n, instruction.iindex, instruction.getRef(), instruction, new Work(w.clone(), instruction.getRef(), new WorkVisitor() {
+                            w.info.setField();
+                            res.addAll(findUsageOfAlias(new Point(n, instruction.iindex, instruction.getRef(), instruction, new Work(w.info, w.clone(), instruction.getRef(), new WorkVisitor() {
                                 @Override
                                 public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                                     if (inst instanceof SSAGetInstruction && ((SSAGetInstruction) inst).getRef() == targetV && ((SSAGetInstruction) inst).getDeclaredField().equals(field)) {
@@ -286,7 +298,8 @@ public class ForwardDataflowAnalysisUsingDefUse {
                             while(iUses.hasNext()){
                                 SSAInstruction useInst = iUses.next();
                                 if(useInst.iindex > instruction.iindex) {
-                                    res.add(new Point(n, useInst.iindex, instruction.getRef(), useInst, new Work(w.clone(), instruction.getRef(), new WorkVisitor() {
+                                    w.info.setField();
+                                    res.add(new Point(n, useInst.iindex, instruction.getRef(), useInst, new Work(w.info, w.clone(), instruction.getRef(), new WorkVisitor() {
                                         @Override
                                         public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
                                             if (inst instanceof SSAGetInstruction && ((SSAGetInstruction) inst).getRef() == targetV && ((SSAGetInstruction) inst).getDeclaredField().equals(field)) {
@@ -341,6 +354,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
                                 //find use instructions of the parameter
                                 while (iUse.hasNext()) {
                                     SSAInstruction useInst = iUse.next();
+                                    newWork.info.setInter();
                                     res.add(new Point(target, useInst.iindex, param, useInst, newWork.clone().setTargetV(param)));
                                 }
                             }catch(NullPointerException e){
@@ -568,11 +582,13 @@ public class ForwardDataflowAnalysisUsingDefUse {
     }
 
     static class Work{
+        private final IntentAnalysis.IntentInfo info;
         private final Work next;
         protected int targetV;
         protected WorkVisitor visitor;
 
-        public Work(Work next, int targetV, WorkVisitor visitor){
+        public Work(IntentAnalysis.IntentInfo info, Work next, int targetV, WorkVisitor visitor){
+            this.info = info;
             this.next = next;
             this.targetV = targetV;
             this.visitor = visitor;
@@ -586,7 +602,7 @@ public class ForwardDataflowAnalysisUsingDefUse {
         }
 
         public Work clone(){
-            return new Work(next, targetV, visitor);
+            return new Work(info, next, targetV, visitor);
         }
 
         public Work getNext(){
@@ -615,6 +631,10 @@ public class ForwardDataflowAnalysisUsingDefUse {
         @Override
         public String toString(){
             return visitor.toString();
+        }
+
+        public IntentAnalysis.IntentInfo getInfo(){
+            return this.info;
         }
     }
 

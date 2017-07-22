@@ -24,6 +24,9 @@ public class IntentAnalysis {
 //    private final BackwardDataflowUsingDefUse backward;
     private final ForwardDataflowAnalysisUsingDefUse forward;
     public final static MethodReference START_ACTIVTY1 = MethodReference.findOrCreate(TypeReference.find(ClassLoaderReference.Primordial, "Landroid/content/ContextWrapper"), Selector.make("startActivity(Landroid/content/Intent;)V"));
+    public final static Selector STAC1 = Selector.make("startActivity(Landroid/content/Intent;)V");
+    public final static Selector STAC2 = Selector.make("startActivity(Landroid/content/Intent;Landroid/os/Bundle;)V");
+
     private final Set<String> trackableActivities;
 
     public IntentAnalysis(CallGraph cg){
@@ -89,12 +92,36 @@ public class IntentAnalysis {
                     final IntentInfo info = new IntentInfo();
                     intentRes.add(info);
 
-                    res.add(new Point(n, newInst.iindex, newInst.getDef(), newInst, new ForwardDataflowAnalysisUsingDefUse.Work(null, newInst.getDef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
-
+                    res.add(new Point(n, newInst.iindex, newInst.getDef(), newInst, new ForwardDataflowAnalysisUsingDefUse.Work(info, null, newInst.getDef(), new ForwardDataflowAnalysisUsingDefUse.WorkVisitor() {
+                        private boolean isPrinted = false;
+                        private boolean isStaticPrinted = false;
                         @Override
                         public boolean visit(CGNode n, SSAInstruction inst, int targetV) {
-                            if(inst instanceof SSAAbstractInvokeInstruction && inst.getUse(0) == targetV){
+                            if(!isPrinted && inst instanceof SSAAbstractInvokeInstruction && inst.getNumberOfUses() >= 2 && inst.getUse(0) != targetV){
                                 SSAAbstractInvokeInstruction invokeInst = (SSAAbstractInvokeInstruction) inst;
+                                if(!invokeInst.getDeclaredTarget().getSelector().toString().contains("start") && !invokeInst.getDeclaredTarget().getSelector().toString().contains("bind")
+                                        && !invokeInst.getDeclaredTarget().getSelector().toString().contains("send") &&
+                                        !invokeInst.getDeclaredTarget().getSelector().toString().contains("queryIntent")){
+                                    for(CGNode traget : cg.getPossibleTargets(n, invokeInst.getCallSite())) {
+                                        if(!traget.getMethod().getDeclaringClass().getName().toString().contains("Intent"))
+                                        if (isLibrary(traget)) {
+                                            if (!isPrinted) {
+                                                System.out.println("#Intent Propagated To: " + traget);
+                                                System.out.println("\t=> " + invokeInst + " , " + targetV);
+                                                isPrinted = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if(inst instanceof SSAAbstractInvokeInstruction && inst.getNumberOfUses() >= 2 && inst.getUse(1) == targetV){
+                                SSAAbstractInvokeInstruction invokeInst = (SSAAbstractInvokeInstruction) inst;
+                                if(invokeInst.getDeclaredTarget().getSelector().equals(STAC1) || invokeInst.getDeclaredTarget().getSelector().equals(STAC2))
+                                    info.called = true;
+                            }
+                            else if(inst instanceof SSAAbstractInvokeInstruction && inst.getUse(0) == targetV){
+                                SSAAbstractInvokeInstruction invokeInst = (SSAAbstractInvokeInstruction) inst;
+
                                 if(invokeInst.toString().contains("<init>")){
                                     for(Intent.InitSelector init : Intent.InitSelector.values()){
                                         switch(Intent.InitSelector.matchInit(invokeInst.getDeclaredTarget().getSelector())){
@@ -215,6 +242,10 @@ public class IntentAnalysis {
     public static class IntentInfo {
         private String activityName = "UNKNOWN";
         private final Set<Intent.Flag> flags = new HashSet<>();
+        private boolean isInter = false;
+        private boolean isField = false;
+        private boolean isArray = false;
+        private boolean called = false;
 
         public IntentInfo(){}
 
@@ -240,6 +271,35 @@ public class IntentAnalysis {
             return this.flags;
         }
 
+        public boolean isInter(){
+            return this.isInter;
+        }
+        public boolean isField(){
+            return this.isField;
+        }
+        public boolean isArray(){
+            return this.isArray;
+        }
+
+        public void setInter(){
+            this.isInter = true;
+        }
+
+        public void setField(){
+            this.isField = true;
+        }
+
+        public void setArray(){
+            this.isArray = true;
+        }
+
+        public void called(){
+            this.called = true;
+        }
+
+        public boolean isCalled(){
+            return this.called;
+        }
         @Override
         public String toString(){
             return "[Intent] name: " + activityName + ", Flags: " + flags;

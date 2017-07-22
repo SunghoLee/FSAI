@@ -5,6 +5,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.types.MethodReference;
+import kr.ac.kaist.activity.injection.analysis.ActivityInjectionDetector;
 import kr.ac.kaist.activity.injection.analysis.IntentAnalysis;
 import kr.ac.kaist.activity.injection.analysis.LaunchingActInfo;
 import kr.ac.kaist.activity.injection.appinfo.ActivityInfoExtractor;
@@ -45,7 +46,10 @@ public class Shell {
 //            }
 
             boolean isAnalyzable = isAnalyzable(infos, extractor.getAppPackageName());
+            boolean hasSingleInstance = hasSingleInstance(infos, extractor.getAppPackageName());
+
             System.out.println("#Analyzable? " + isAnalyzable);
+            System.out.println("#hasSingleInstance? " + hasSingleInstance);
 
             if(!DEBUG){
                 if(!isAnalyzable){
@@ -67,6 +71,7 @@ public class Shell {
                     return true;
                 }
             });
+
             Set<ActivityInfoExtractor.ActivityInfo> injectableActivities = findInjectableActivity(infos, extractor.getAppPackageName());
             Set<String> trackActs = new HashSet<>();
             for(ActivityInfoExtractor.ActivityInfo ai : injectableActivities){
@@ -81,7 +86,17 @@ public class Shell {
             System.out.println("#################################");
             System.out.println();
 
-            joinActivityIntentData(infos, intentInfos);
+            Set<LaunchingActInfo> finalInfo = joinActivityIntentData(infos, intentInfos);
+            ActivityInjectionDetector injectionDetector = new ActivityInjectionDetector(finalInfo, extractor.getAppPackageName());
+            Set<LaunchingActInfo> injectionInfo = injectionDetector.detect();
+
+            System.out.println("##### Final Injection Results #####");
+            System.out.println("# PACKNAME: " + extractor.getAppPackageName());
+            for(LaunchingActInfo s : injectionInfo)
+                System.out.println(s.toString() + " => INJECTION_DETECTED! call? " + s.isCalled());
+            System.out.println("#################################");
+            System.out.println();
+
 //            CallingComponentAnalysis cca = new CallingComponentAnalysis(cg);
 //            for(CallingComponentAnalysis.ComponentCallingContext cc : cca.getCallingContexts()){
 //                System.out.println(cc);
@@ -138,6 +153,16 @@ public class Shell {
         return false;
     }
 
+    private static boolean hasSingleInstance(Set<ActivityInfoExtractor.ActivityInfo> infos, String packageName){
+        for(ActivityInfoExtractor.ActivityInfo info : infos){
+            if(info.getLaunchMode().equals(Activity.LaunchMode.SINGLEINSTANCE)) {
+                System.out.println("SINGLEINSTANCE: " + info);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static Set<ActivityInfoExtractor.ActivityInfo> findInjectableActivity(Set<ActivityInfoExtractor.ActivityInfo> infos, String packageName){
         Set<ActivityInfoExtractor.ActivityInfo> res = new HashSet<>();
         for(ActivityInfoExtractor.ActivityInfo info : infos){
@@ -184,7 +209,7 @@ public class Shell {
             for(IntentAnalysis.IntentInfo intInfo : intentInfos){
 //                System.out.println("\t<= " + intInfo.getActivityName());
                 if(intInfo.getActivityName().equals(activityName)){
-                    res.add(new LaunchingActInfo(activityName, launchMode, taskAffinity, intInfo.getFlags()));
+                    res.add(new LaunchingActInfo(activityName, launchMode, taskAffinity, intInfo.getFlags(), intInfo.isInter(), intInfo.isField(), intInfo.isArray(), intInfo.isCalled()));
                 }
             }
         }
