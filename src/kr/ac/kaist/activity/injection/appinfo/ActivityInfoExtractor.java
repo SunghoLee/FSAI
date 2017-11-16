@@ -1,7 +1,6 @@
 package kr.ac.kaist.activity.injection.appinfo;
 
 import com.ibm.wala.util.debug.Assertions;
-import com.sun.istack.internal.NotNull;
 import kr.ac.kaist.activity.injection.decompile.AndroidDecompiler;
 import kr.ac.kaist.activity.injection.decompile.parser.ManifestParser;
 import kr.ac.kaist.activity.injection.types.Activity;
@@ -171,7 +170,7 @@ public class ActivityInfoExtractor {
         private final Activity.LaunchMode launchMode;
 
 
-        public ActivityInfo(@NotNull String packageName, @NotNull String activityName, @NotNull String taskAffinity, @NotNull Activity.LaunchMode launchMode){
+        public ActivityInfo(String packageName, String activityName, String taskAffinity, Activity.LaunchMode launchMode){
             this.packageName = "L" + packageName.replace(".","/");
             this.activityName = activityName;
             if(!taskAffinity.equals(""))

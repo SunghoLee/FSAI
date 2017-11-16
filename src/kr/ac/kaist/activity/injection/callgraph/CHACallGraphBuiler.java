@@ -133,6 +133,7 @@ public class CHACallGraphBuiler {
         scope.setLoaderImpl(ClassLoaderReference.Application, "com.ibm.wala.dalvik.classLoader.WDexClassLoaderImpl");
 
         File exclusionsFile = new File(CallGraphTestUtil.REGRESSION_EXCLUSIONS);
+	System.out.println(exclusionsFile.getAbsolutePath());
 
         try {
             //Set exclusions.

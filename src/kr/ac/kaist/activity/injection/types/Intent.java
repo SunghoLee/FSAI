@@ -2,7 +2,6 @@ package kr.ac.kaist.activity.injection.types;
 
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
-import sun.jvm.hotspot.types.WrongTypeException;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -337,19 +336,19 @@ public class Intent {
             return (v instanceof Integer);
         }
 
-        public String getStringValue(){
+        public String getStringValue() throws WrongTypeException{
             if(isStringConstant())
                 return (String)v;
             throw new WrongTypeException("This data does not have a string constant: " + v);
         }
 
-        public int getIntegerValue(){
+        public int getIntegerValue() throws WrongTypeException{
             if(isIntegerConstant())
                 return (Integer)v;
             throw new WrongTypeException("This data does not have a integer constant: " + v);
         }
 
-        public ExtraData matchExtraData(Object o){
+        public ExtraData matchExtraData(Object o) throws WrongTypeException{
             if(o instanceof String){
                 for(ExtraData e : ExtraData.values()){
                     if(e.isStringConstant()){
@@ -436,5 +435,11 @@ public class Intent {
             }
             return res;
         }
+    }
+
+    static class WrongTypeException extends Exception {
+	public WrongTypeException(String msg){
+	    super(msg);
+	}
     }
 }
