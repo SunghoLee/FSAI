@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="apktool_2.0.2">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../../../../../repo/HybriDroid/kr.ac.kaist.wala.hybridroid/src/resources/apktool_2.0.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
